@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+  "pretest": "cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma migrate deploy || cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma db push --skip-generate",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -18,7 +21,7 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^6.19.0",
     "next": "16.0.1",
-  "next-auth": "^5.0.0-beta.15",
+    "next-auth": "^5.0.0-beta.15",
     "prisma": "^6.19.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
@@ -28,10 +31,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

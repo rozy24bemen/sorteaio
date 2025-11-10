@@ -1,7 +1,7 @@
 import { handlers } from "@/auth";
 import type { NextRequest } from "next/server";
 
-async function withDevCsp<T extends (...args: any[]) => Promise<Response>>(fn: T) {
+function withDevCsp<T extends (...args: any[]) => Promise<Response>>(fn: T) {
 	return (async (...args: Parameters<T>) => {
 		const res = await fn(...(args as any));
 		if (process.env.NODE_ENV !== "production") {
