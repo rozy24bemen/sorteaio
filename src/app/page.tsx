@@ -1,65 +1,74 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Carousel } from "@/components/Carousel";
+import { GiveawayCard } from "@/components/GiveawayCard";
+import { prisma } from "@/lib/prisma";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+const featured = [
+  { id: "f1", title: "iPhone 16 Pro Max" },
+  { id: "f2", title: "PlayStation 5 + 2 mandos" },
+  { id: "f3", title: "Viaje a Canarias" },
+];
+
+export default async function Home() {
+  // Fetch active giveaways from DB
+  const giveaways = await prisma.giveaway.findMany({
+    where: { status: "active" },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  });
+
+  const list = giveaways.length ? giveaways.map((g) => ({
+    id: g.id,
+    title: g.title,
+    shortDescription: g.description.substring(0, 60) + "...",
+    endsAt: g.endsAt.toISOString(),
+  })) : [];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+      {/* Mini header / hero */}
+      <section className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--color-fg)]">Sorteos transparentes y verificados</h1>
+          <p className="text-sm text-[var(--color-fg-muted)]">Participa en minutos. Resultados claros.</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <Link href="/empresas" className="rounded-full bg-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-white">
+          Para empresas
+        </Link>
+      </section>
+
+      {/* Carousel destacados */}
+      <section className="mb-8">
+        <Carousel items={featured} />
+      </section>
+
+      {/* Sobre nosotros */}
+      <section className="mb-8 grid gap-3 rounded-lg border bg-[var(--color-bg-soft)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--color-fg)]">¿Por qué sortea.io?</h2>
+        <ul className="list-disc pl-5 text-sm text-[var(--color-fg-muted)]">
+          <li>Sorteos 100% transparentes</li>
+          <li>Verificación automática de interacciones disponibles</li>
+          <li>Protección legal y bases claras</li>
+        </ul>
+      </section>
+
+      {/* Listado con filtros (placeholder) */}
+      <section className="mb-8">
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+          <button className="rounded-full border px-3 py-1">Todos</button>
+          <button className="rounded-full border px-3 py-1">Instagram</button>
+          <button className="rounded-full border px-3 py-1">X</button>
+          <button className="rounded-full border px-3 py-1">TikTok</button>
+          <div className="ml-auto text-xs text-[var(--color-fg-muted)]">Paginación</div>
         </div>
-      </main>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map((g) => (
+            <GiveawayCard key={g.id} {...g} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
