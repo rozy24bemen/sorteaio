@@ -12,12 +12,17 @@ const featured = [
 ];
 
 export default async function Home() {
-  // Fetch active giveaways from DB
-  const giveaways = await prisma.giveaway.findMany({
-    where: { status: "active" },
-    orderBy: { createdAt: "desc" },
-    take: 8,
-  });
+  // Fetch active giveaways from DB, but never crash the page if DB is unavailable
+  let giveaways: { id: string; title: string; description: string; endsAt: Date }[] = [];
+  try {
+    giveaways = await prisma.giveaway.findMany({
+      where: { status: "active" },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    });
+  } catch (e) {
+    console.error("[home] Failed to fetch giveaways:", e);
+  }
 
   const list = giveaways.length ? giveaways.map((g) => ({
     id: g.id,
