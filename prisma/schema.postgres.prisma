@@ -2,9 +2,8 @@
 // Mirrors the SQLite schema but with provider set to postgresql
 
 generator client {
-  provider = "prisma-client-js"
-  // Keep output path consistent with existing project expectations if set in the main schema
-  // If your main schema specifies a custom output, mirror it here.
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
