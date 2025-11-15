@@ -6,7 +6,8 @@ export async function GET() {
     const giveaways = await prisma.giveaway.count();
     const users = await prisma.user.count();
     return NextResponse.json({ ok: true, users, giveaways });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -34,7 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const count = await prisma.companyAccount.count({ where: { ownerUserId: user.id } });
           session.user.isCompany = count > 0;
-        } catch (e) {
+        } catch {
           // Fallback: don't block session creation if DB check fails
           session.user.isCompany = false;
         }

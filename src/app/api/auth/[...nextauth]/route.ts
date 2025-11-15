@@ -1,9 +1,12 @@
+export const runtime = 'nodejs';
 import { handlers } from "@/auth";
 import type { NextRequest } from "next/server";
 
-function withDevCsp<T extends (...args: any[]) => Promise<Response>>(fn: T) {
-	return (async (...args: Parameters<T>) => {
-		const res = await fn(...(args as any));
+type Handler = (req: NextRequest, ctx: Record<string, unknown>) => Promise<Response>;
+
+function withDevCsp(fn: Handler) {
+	return (async (req: NextRequest, ctx: Record<string, unknown>) => {
+		const res = await fn(req, ctx);
 		if (process.env.NODE_ENV !== "production") {
 			const existing = res.headers.get("Content-Security-Policy");
 			if (existing) {
@@ -17,8 +20,8 @@ function withDevCsp<T extends (...args: any[]) => Promise<Response>>(fn: T) {
 			}
 		}
 		return res;
-	}) as T;
+	});
 }
 
-export const GET = withDevCsp((handlers as any).GET as (req: NextRequest, ctx: any) => Promise<Response>);
-export const POST = withDevCsp((handlers as any).POST as (req: NextRequest, ctx: any) => Promise<Response>);
+export const GET = withDevCsp(handlers.GET as Handler);
+export const POST = withDevCsp(handlers.POST as Handler);

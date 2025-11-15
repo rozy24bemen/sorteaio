@@ -6,7 +6,6 @@ import path from "node:path";
 const logConfig: ("query"|"error"|"warn"|"info")[] = process.env.PRISMA_LOG_QUERIES === "1" ? ['query','error','warn'] : ['error','warn'];
 
 declare global {
-  // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 

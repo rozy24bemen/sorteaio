@@ -79,6 +79,13 @@ model SocialAccount {
   network          SocialNetwork
   handle           String
   tokenType        TokenType?
+  accessToken      String?
+  refreshToken     String?
+  accessTokenExpiresAt DateTime?
+  providerUserId   String?        // Meta user/page/account id
+  pageId           String?        // Facebook Page ID (if applicable)
+  instagramBusinessId String?     // Instagram Business Account ID
+  scope            String?        // Comma-separated scopes granted
   userId           String?
   user             User?           @relation(fields: [userId], references: [id])
   companyId        String?

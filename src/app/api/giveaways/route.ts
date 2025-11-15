@@ -1,20 +1,27 @@
+export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import { GiveawayStatus, SocialNetwork } from "@/generated/prisma/client";
+import { GiveawayStatus, SocialNetwork, RequirementType } from "@/generated/prisma/client";
 
 /**
  * GET /api/giveaways
  * List giveaways with optional filters: status, companyId, network
  */
-export async function GET(req: NextRequest) {
+type GiveawayFilters = {
+  status?: GiveawayStatus;
+  companyId?: string;
+  network?: SocialNetwork;
+};
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = req.nextUrl;
     const status = searchParams.get("status") as GiveawayStatus | null;
     const companyId = searchParams.get("companyId");
     const network = searchParams.get("network") as SocialNetwork | null;
 
-    const where: any = {};
+    const where: GiveawayFilters = {};
     if (status) where.status = status;
     if (companyId) where.companyId = companyId;
     if (network) where.network = network;
@@ -31,8 +38,9 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ giveaways });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -40,13 +48,32 @@ export async function GET(req: NextRequest) {
  * POST /api/giveaways
  * Create a new giveaway (requires auth + company ownership)
  */
-export async function POST(req: NextRequest) {
+interface RequirementInput {
+  type: string;
+  required?: boolean;
+  mentionsCount?: number;
+  profileToFollow?: string;
+}
+interface GiveawayCreatePayload {
+  title: string;
+  description?: string;
+  network: SocialNetwork;
+  postUrl: string;
+  companyId: string;
+  startsAt: string | number | Date;
+  endsAt: string | number | Date;
+  basesUrl?: string;
+  imageUrl?: string;
+  requirements?: RequirementInput[];
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
   const authResult = await requireAuth();
   if (authResult.error) return authResult.error;
   const userId = authResult.user!.id;
 
   try {
-    const body = await req.json();
+    const body: GiveawayCreatePayload = await req.json();
     const {
       title,
       description,
@@ -60,10 +87,27 @@ export async function POST(req: NextRequest) {
       requirements = [],
     } = body;
 
+    // Basic required fields validation
+    if (!title || !network || !postUrl || !companyId || !startsAt || !endsAt) {
+      return NextResponse.json(
+        { error: "Missing required fields: title, network, postUrl, companyId, startsAt, endsAt" },
+        { status: 400 }
+      );
+    }
+
+    // Validate dates
+    const starts = new Date(startsAt);
+    const ends = new Date(endsAt);
+    if (isNaN(starts.getTime()) || isNaN(ends.getTime())) {
+      return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+    }
+    if (ends <= starts) {
+      return NextResponse.json({ error: "endsAt must be after startsAt" }, { status: 400 });
+    }
+
     // Validate user owns the company
-    const company = await prisma.companyAccount.findUnique({
-      where: { id: companyId },
-    });
+    const company = await prisma.companyAccount.findUnique({ where: { id: companyId } });
+    // Optional dev-only debug removed for production cleanliness
     if (!company || company.ownerUserId !== userId) {
       return NextResponse.json(
         { error: "Forbidden: you do not own this company" },
@@ -74,19 +118,21 @@ export async function POST(req: NextRequest) {
     // Create giveaway with requirements in a transaction
     const giveaway = await prisma.giveaway.create({
       data: {
-        title,
-        description,
+  title,
+  description: description ?? "",
         network,
         postUrl,
         companyId,
-        startsAt: new Date(startsAt),
-        endsAt: new Date(endsAt),
+        startsAt: starts,
+        endsAt: ends,
         basesUrl,
         imageUrl,
         status: "draft",
         requirements: {
-          create: requirements.map((r: any, idx: number) => ({
-            type: r.type,
+          create: requirements.map((r, idx) => ({
+            type: (Object.values(RequirementType) as string[]).includes(r.type)
+              ? (r.type as RequirementType)
+              : RequirementType.follow,
             required: r.required ?? true,
             mentionsCount: r.mentionsCount,
             profileToFollow: r.profileToFollow,
@@ -96,9 +142,11 @@ export async function POST(req: NextRequest) {
       },
       include: { requirements: true },
     });
+    // Optional dev-only debug removed for production cleanliness
 
     return NextResponse.json({ giveaway }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

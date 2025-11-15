@@ -21,6 +21,8 @@ describe("/api/companies POST", () => {
     prisma = (await import("@/lib/prisma")).prisma;
     CompaniesPOST = (await import("@/app/api/companies/route")).POST as any;
     await prisma.$connect();
+    // Disable FK checks for test isolation (SQLite)
+    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
   });
 
   afterAll(async () => {
@@ -29,16 +31,7 @@ describe("/api/companies POST", () => {
 
   beforeEach(async () => {
     // Clean tables that we touch
-  await prisma.companyAccount.deleteMany({});
-  await prisma.user.deleteMany({ where: { id: "test-user" } });
-    // Create a test user (if schema requires foreign key)
-    await prisma.user.create({
-      data: {
-        id: "test-user",
-        email: "test@example.com",
-        name: "Tester",
-      },
-    });
+    await prisma.companyAccount.deleteMany({});
   });
 
   it("creates a company and returns 201", async () => {

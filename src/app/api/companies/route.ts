@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
@@ -6,13 +7,20 @@ import { requireAuth } from "@/lib/auth-helpers";
  * POST /api/companies
  * Create a new company account for authenticated user
  */
-export async function POST(req: NextRequest) {
+interface CompanyCreatePayload {
+  legalName: string;
+  taxId: string;
+  fiscalAddress?: string | null;
+  contactEmail: string;
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
   const authResult = await requireAuth();
   if (authResult.error) return authResult.error;
   const userId = authResult.user!.id;
 
   try {
-    const body = await req.json();
+    const body: CompanyCreatePayload = await req.json();
     const { legalName, taxId, fiscalAddress, contactEmail } = body;
 
     if (!legalName || !taxId || !contactEmail) {
@@ -33,8 +41,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ company }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -42,7 +51,7 @@ export async function POST(req: NextRequest) {
  * GET /api/companies
  * List companies owned by authenticated user
  */
-export async function GET(req: NextRequest) {
+export async function GET(): Promise<NextResponse> {
   const authResult = await requireAuth();
   if (authResult.error) return authResult.error;
   const userId = authResult.user!.id;
@@ -56,7 +65,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ companies });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

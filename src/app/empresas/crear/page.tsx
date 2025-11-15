@@ -9,6 +9,21 @@ interface RequirementDraft {
   mentions?: number;
 }
 
+interface GiveawayFormPayload {
+  title: string;
+  description: string;
+  network: string;
+  postUrl: string;
+  startsAt: string;
+  endsAt: string;
+  companyId: string;
+  requirements: Array<{
+    type: RequirementDraft["type"];
+    required: boolean;
+    mentionsCount?: number;
+  }>;
+}
+
 export default function CrearSorteoPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -48,13 +63,13 @@ export default function CrearSorteoPage() {
       }
     }
 
-    const payload = {
-      title: formData.get("title"),
-      description: formData.get("description"),
-      network: formData.get("network"),
-      postUrl: formData.get("postUrl"),
-      startsAt: formData.get("startsAt"),
-      endsAt: formData.get("endsAt"),
+    const payload: GiveawayFormPayload = {
+      title: String(formData.get("title") || ""),
+      description: String(formData.get("description") || ""),
+      network: String(formData.get("network") || "instagram"),
+      postUrl: String(formData.get("postUrl") || ""),
+      startsAt: String(formData.get("startsAt") || ""),
+      endsAt: String(formData.get("endsAt") || ""),
       companyId,
       requirements: requirements.map((r) => ({
         type: r.type,
@@ -77,8 +92,9 @@ export default function CrearSorteoPage() {
 
       const { giveaway } = await res.json();
       router.push(`/empresas/sorteos/${giveaway.id}`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      setError(message);
     } finally {
       setLoading(false);
     }

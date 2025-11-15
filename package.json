@@ -4,17 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+  "build": "prisma migrate deploy && next build",
     "start": "next start",
-    "lint": "next lint",
+  "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx prisma/seed.ts",
-  "pretest": "cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma migrate deploy || cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma db push --skip-generate",
+  "pretest": "cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma db push --skip-generate --force-reset",
     "test": "vitest run",
     "test:watch": "vitest"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

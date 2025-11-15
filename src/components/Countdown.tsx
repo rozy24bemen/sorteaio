@@ -1,16 +1,22 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
-export function Countdown({ endsAt }: { endsAt: string | number | Date }) {
+interface CountdownProps { endsAt: string | number | Date }
+
+export function Countdown({ endsAt }: CountdownProps) {
   const target = useMemo(() => new Date(endsAt).getTime(), [endsAt]);
-  const [now, setNow] = useState(Date.now());
+  // Use remaining time state; initialize at 0 to keep render pure
+  const [remainingMs, setRemainingMs] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    // Initial tick after mount
+    const compute = () => setRemainingMs(Math.max(0, target - Date.now()));
+    compute();
+    const id = setInterval(compute, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [target]);
 
-  const diff = Math.max(0, target - now);
+  const diff = remainingMs;
   const s = Math.floor(diff / 1000) % 60;
   const m = Math.floor(diff / (1000 * 60)) % 60;
   const h = Math.floor(diff / (1000 * 60 * 60)) % 24;
