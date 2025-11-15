@@ -1,5 +1,5 @@
-// Prisma schema for Postgres deployments (e.g., Vercel)
-// Mirrors the SQLite schema but with provider set to postgresql
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client"
@@ -11,12 +11,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Models & Enums ---
-// NOTE: Keep in sync with prisma/schema.prisma
-
+// Enums
 enum SocialNetwork {
   instagram
-  meta
+  x
+  tiktok
+  facebook
 }
 
 enum TokenType {
@@ -24,108 +24,175 @@ enum TokenType {
   long
 }
 
+enum RequirementType {
+  like
+  comment
+  mentions
+  follow
+}
+
+enum GiveawayStatus {
+  draft
+  active
+  awaiting_winner
+  finished
+}
+
+enum VerificationStatus {
+  pending
+  approved
+  rejected
+}
+
+// Models
 model User {
-  id            String           @id @default(cuid())
-  email         String           @unique
-  name          String?
-  image         String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  socialAccounts SocialAccount[]
-  participations Participation[]
+  id              String           @id @default(cuid())
+  name            String?
+  email           String?          @unique
+  image           String?
+  emailVerified   DateTime?
+  socialAccounts  SocialAccount[]
+  participations  Participation[]
+  companies       CompanyAccount[] @relation("CompanyOwner")
+  accounts        Account[]
+  sessions        Session[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model CompanyAccount {
-  id        String   @id @default(cuid())
-  name      String
-  ownerId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  owner   User   @relation(fields: [ownerId], references: [id])
-  giveaways Giveaway[]
-  socials   SocialAccount[]
-}
-
-model Giveaway {
-  id           String   @id @default(cuid())
-  companyId    String
-  title        String
-  description  String?
-  startsAt     DateTime
-  endsAt       DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Relations
-  company       CompanyAccount @relation(fields: [companyId], references: [id])
-  requirements  Requirement[]
-  participations Participation[]
-  selections     WinnerSelection[]
-}
-
-model Requirement {
-  id          String   @id @default(cuid())
-  giveawayId  String
-  network     SocialNetwork
-  // For Instagram comment verification we store the IG media permalink
-  instagramPermalink String?
-  requireComment     Boolean @default(false)
-  requireLike        Boolean @default(false)
-
-  giveaway   Giveaway @relation(fields: [giveawayId], references: [id])
-}
-
-model Participation {
-  id          String   @id @default(cuid())
-  giveawayId  String
-  userId      String
-  createdAt   DateTime @default(now())
-  verifiedAt  DateTime?
-  status      String   @default("pending") // pending | approved | rejected
-
-  giveaway Giveaway @relation(fields: [giveawayId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-}
-
-model WinnerSelection {
-  id           String   @id @default(cuid())
-  giveawayId   String
-  winnerId     String
-  backupsJson  String   // JSON string of backup user IDs for portability
-  createdAt    DateTime @default(now())
-
-  giveaway Giveaway @relation(fields: [giveawayId], references: [id])
+  id             String          @id @default(cuid())
+  legalName      String
+  taxId          String
+  fiscalAddress  String?
+  contactEmail   String
+  ownerUserId    String?
+  owner          User?           @relation("CompanyOwner", fields: [ownerUserId], references: [id])
+  socialAccounts SocialAccount[]
+  giveaways      Giveaway[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model SocialAccount {
-  id                   String   @id // deterministic id (e.g., `${ownerId}-meta` or `${userId}-instagram`)
-  userId               String?
-  companyId            String?
-  network              SocialNetwork
-  providerUserId       String?
-  handle               String?
-
-  // Meta/Instagram tokens
-  tokenType            TokenType?
-  accessToken          String?
-  refreshToken         String?
+  id               String          @id @default(cuid())
+  network          SocialNetwork
+  handle           String
+  tokenType        TokenType?
+  accessToken      String?
+  refreshToken     String?
   accessTokenExpiresAt DateTime?
+  providerUserId   String?        // Meta user/page/account id
+  pageId           String?        // Facebook Page ID (if applicable)
+  instagramBusinessId String?     // Instagram Business Account ID
+  scope            String?        // Comma-separated scopes granted
+  userId           String?
+  user             User?           @relation(fields: [userId], references: [id])
+  companyId        String?
+  company          CompanyAccount? @relation(fields: [companyId], references: [id])
+  createdAt        DateTime        @default(now())
+}
 
-  // Meta Business fields
-  pageId               String?
-  instagramBusinessId  String?
-  scope                String?
+model Giveaway {
+  id              String          @id @default(cuid())
+  title           String
+  description     String
+  imageUrl        String?
+  network         SocialNetwork
+  postUrl         String
+  companyId       String
+  company         CompanyAccount  @relation(fields: [companyId], references: [id])
+  startsAt        DateTime
+  endsAt          DateTime
+  basesUrl        String?
+  status          GiveawayStatus  @default(draft)
+  requirements    Requirement[]
+  participations  Participation[]
+  selection       WinnerSelection?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+model Requirement {
+  id               String           @id @default(cuid())
+  giveawayId       String
+  giveaway         Giveaway         @relation(fields: [giveawayId], references: [id])
+  type             RequirementType
+  required         Boolean          @default(true)
+  mentionsCount    Int?
+  profileToFollow  String?
+  order            Int?             @default(0)
+  createdAt        DateTime         @default(now())
+}
 
-  // Relations
-  user     User?           @relation(fields: [userId], references: [id])
-  company  CompanyAccount? @relation(fields: [companyId], references: [id])
+model Participation {
+  id                  String              @id @default(cuid())
+  giveawayId          String
+  giveaway            Giveaway            @relation(fields: [giveawayId], references: [id])
+  userId              String
+  user                User                @relation(fields: [userId], references: [id])
+  entries             Int                 @default(1)
+  createdAt           DateTime            @default(now())
+  isWinner            Boolean             @default(false)
+  verificationStatus  VerificationStatus  @default(pending)
+  // Relations to winner selection
+  primaryOfSelection  WinnerSelection?   @relation("PrimaryParticipation")
+  backupIn            WinnerBackup[]
+}
 
-  @@index([userId])
-  @@index([companyId])
-  @@index([network])
+model WinnerSelection {
+  id                      String            @id @default(cuid())
+  giveawayId              String            @unique
+  giveaway                Giveaway          @relation(fields: [giveawayId], references: [id])
+  executedAt              DateTime          @default(now())
+  primaryParticipationId  String            @unique
+  primaryParticipation    Participation     @relation("PrimaryParticipation", fields: [primaryParticipationId], references: [id])
+  backups                 WinnerBackup[]
+}
+
+model WinnerBackup {
+  id               String          @id @default(cuid())
+  selectionId      String
+  selection        WinnerSelection @relation(fields: [selectionId], references: [id])
+  participationId  String
+  participation    Participation   @relation(fields: [participationId], references: [id])
+  order            Int             @default(0)
+}
+
+// Auth.js / NextAuth models (from official Prisma schema)
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? // token columns are provider-specific
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+  oauth_token_secret String?
+  oauth_token        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
