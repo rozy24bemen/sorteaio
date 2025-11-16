@@ -1,5 +1,4 @@
-// Import from generated Prisma client output directory
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import path from "node:path";
 
 // Normalize env vars at runtime so Prisma Client always has DATABASE_URL

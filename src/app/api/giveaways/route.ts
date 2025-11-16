@@ -2,7 +2,8 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import { GiveawayStatus, SocialNetwork, RequirementType } from "@/generated/prisma/client";
+import { RequirementType } from "@prisma/client";
+import type { GiveawayStatus, SocialNetwork, RequirementType as RequirementTypeEnum } from "@prisma/client";
 
 /**
  * GET /api/giveaways
@@ -131,8 +132,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         requirements: {
           create: requirements.map((r, idx) => ({
             type: (Object.values(RequirementType) as string[]).includes(r.type)
-              ? (r.type as RequirementType)
-              : RequirementType.follow,
+              ? (r.type as RequirementTypeEnum)
+              : ("follow" as RequirementTypeEnum),
             required: r.required ?? true,
             mentionsCount: r.mentionsCount,
             profileToFollow: r.profileToFollow,

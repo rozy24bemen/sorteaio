@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Requirement, Participation, Giveaway } from "@/generated/prisma/client";
+import type { Requirement, Participation, Giveaway } from "@prisma/client";
 import { MetaAdapter } from "@/lib/meta/MetaAdapter";
 
 export type VerificationDetail = {

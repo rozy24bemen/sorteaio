@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
-import { GiveawayStatus } from "@/generated/prisma/client";
+import type { GiveawayStatus } from "@prisma/client";
 
 /**
  * GET /api/giveaways/[id]

@@ -1,4 +1,4 @@
-import type { Giveaway, SocialAccount } from "@/generated/prisma/client";
+import type { Giveaway, SocialAccount } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 type FetchLike = typeof fetch;
