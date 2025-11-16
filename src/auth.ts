@@ -15,6 +15,10 @@ declare module "next-auth" {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Allow dynamic host detection behind Vercel proxy and on preview URLs
+  trustHost: true,
+  // Be explicit about the secret to avoid env resolution issues
+  secret: process.env.AUTH_SECRET,
   adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
     Google({
