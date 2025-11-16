@@ -46,4 +46,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  events: {
+    async error(message) {
+      // Minimal server-side visibility for production incidents
+      console.error("[auth][error]", message);
+    },
+  },
 });
