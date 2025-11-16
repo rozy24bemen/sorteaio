@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function RegistroEmpresaPage() {
   const router = useRouter();
@@ -8,12 +9,13 @@ export default function RegistroEmpresaPage() {
     <div className="mx-auto max-w-lg px-4 py-10">
       <h1 className="mb-6 text-2xl font-bold">Registro para sorteadores</h1>
       <div className="grid gap-4">
-        <a
-          href={`/api/auth/signin/google?callbackUrl=${encodeURIComponent("/empresas/onboarding?step=1")}`}
+        <button
+          type="button"
+          onClick={() => signIn("google", { callbackUrl: "/empresas/onboarding?step=1" })}
           className="w-full text-center rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
         >
           Login con Google
-        </a>
+        </button>
         <button
           type="button"
           onClick={() => router.push("/empresas/onboarding?step=1")}
