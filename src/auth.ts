@@ -46,10 +46,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-  events: {
-    async error(message) {
-      // Minimal server-side visibility for production incidents
-      console.error("[auth][error]", message);
+  // Use logger to surface errors in Vercel logs
+  logger: {
+    error: (...args: any[]) => {
+      console.error("[auth][error]", ...args);
+    },
+    warn: (...args: any[]) => {
+      console.warn("[auth][warn]", ...args);
+    },
+    debug: (...args: any[]) => {
+      if (process.env.NODE_ENV !== "production") console.debug("[auth][debug]", ...args);
     },
   },
 });
