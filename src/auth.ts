@@ -48,13 +48,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   // Use logger to surface errors in Vercel logs
   logger: {
-    error: (...args: any[]) => {
+    error: (...args: unknown[]) => {
       console.error("[auth][error]", ...args);
     },
-    warn: (...args: any[]) => {
+    warn: (...args: unknown[]) => {
       console.warn("[auth][warn]", ...args);
     },
-    debug: (...args: any[]) => {
+    debug: (...args: unknown[]) => {
       if (process.env.NODE_ENV !== "production") console.debug("[auth][debug]", ...args);
     },
   },
