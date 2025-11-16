@@ -5,7 +5,7 @@ import path from "node:path";
 // This mirrors prisma.config.ts logic used at build time (for CLI),
 // but we also need it here for the running app on Vercel.
 if (!process.env.DATABASE_URL) {
-  const fallback = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
+  const fallback = process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_PRISMA_URL;
   if (fallback) {
     process.env.DATABASE_URL = fallback;
     console.log("[prisma.ts] DATABASE_URL filled from POSTGRES_* env var");
@@ -42,6 +42,8 @@ if (!process.env.DATABASE_URL) {
   } catch {
     // ignore
   }
+} else if (process.env.DATABASE_URL.startsWith("prisma:")) {
+  console.warn("[prisma.ts] DATABASE_URL uses prisma://. Consider setting POSTGRES_URL for direct connection in serverless envs.");
 }
 
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;

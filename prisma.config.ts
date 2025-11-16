@@ -6,11 +6,18 @@ import { defineConfig, env } from "prisma/config";
 // - Fallback to common Vercel Postgres envs (POSTGRES_PRISMA_URL, POSTGRES_URL)
 // - As a last resort (e.g., CI), fall back to a local SQLite URL so `prisma generate`
 //   and type-checking can run without secrets.
-const effectiveDbUrl =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.POSTGRES_URL ||
-  "file:./prisma/dev.db";
+// Prefer direct Postgres URLs for CLI (POSTGRES_URL[_NON_POOLING]) over prisma://
+const candidates = [
+  process.env.DATABASE_URL,
+  process.env.POSTGRES_URL,
+  process.env.POSTGRES_URL_NON_POOLING,
+  process.env.POSTGRES_PRISMA_URL,
+];
+let effectiveDbUrl = candidates.find((u) => !!u && !u.startsWith("prisma:"));
+if (!effectiveDbUrl) {
+  // As a last resort (e.g., CI without secrets), fall back to SQLite
+  effectiveDbUrl = "file:./prisma/dev.db";
+}
 
 // Ensure Prisma sees DATABASE_URL even if only POSTGRES_* is set (e.g., Vercel Postgres)
 if (!process.env.DATABASE_URL) {
