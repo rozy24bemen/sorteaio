@@ -1,33 +1,19 @@
 "use client";
-import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function RegistroEmpresaPage() {
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
   const router = useRouter();
-
-  async function handleGoogle() {
-    try {
-      setLoadingGoogle(true);
-      // Redirect directly to onboarding after successful auth
-      await signIn("google", { callbackUrl: "/empresas/onboarding?step=1" });
-    } finally {
-      setLoadingGoogle(false);
-    }
-  }
 
   return (
     <div className="mx-auto max-w-lg px-4 py-10">
       <h1 className="mb-6 text-2xl font-bold">Registro para sorteadores</h1>
       <div className="grid gap-4">
-        <button
-          onClick={handleGoogle}
-          disabled={loadingGoogle}
-          className="w-full rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        <a
+          href={`/api/auth/signin/google?callbackUrl=${encodeURIComponent("/empresas/onboarding?step=1")}`}
+          className="w-full text-center rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
         >
-          {loadingGoogle ? "Conectando…" : "Login con Google"}
-        </button>
+          Login con Google
+        </a>
         <button
           type="button"
           onClick={() => router.push("/empresas/onboarding?step=1")}
