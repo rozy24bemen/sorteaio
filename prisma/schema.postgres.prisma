@@ -44,6 +44,11 @@ enum VerificationStatus {
   rejected
 }
 
+enum AccountType {
+  PARTICIPANT
+  BRAND
+}
+
 // Models
 model User {
   id              String           @id @default(cuid())
@@ -56,6 +61,8 @@ model User {
   companies       CompanyAccount[] @relation("CompanyOwner")
   accounts        Account[]
   sessions        Session[]
+  accountType     AccountType      @default(PARTICIPANT)
+  passwordHash    String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }

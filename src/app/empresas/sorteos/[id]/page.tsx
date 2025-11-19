@@ -1,5 +1,11 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 // Página interna de analíticas de un sorteo (no pública)
 export default async function SorteoAnalyticsPage({ params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session || !session.user.isCompany) {
+    redirect(`/login?next=/empresas/sorteos/${params.id}`);
+  }
   // Mock datos analíticos
   const data = {
     id: params.id,

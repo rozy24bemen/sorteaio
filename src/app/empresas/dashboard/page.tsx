@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardEmpresaPage() {
   const session = await auth();
+  if (!session || !session.user.isCompany) {
+    redirect(`/login?next=/empresas/dashboard`);
+  }
   const userId = session?.user?.id;
   const company = userId
     ? await prisma.companyAccount.findFirst({

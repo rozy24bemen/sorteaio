@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-  "build": "prisma db push --skip-generate && prisma generate && next build",
+    "build": "prisma db push --skip-generate && prisma generate && next build",
     "start": "next start",
-  "lint": "eslint src",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx prisma/seed.ts",
-  "pretest": "cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma db push --skip-generate --force-reset",
+    "pretest": "cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma db push --skip-generate --force-reset",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -17,6 +17,7 @@
     "@auth/core": "^0.34.3",
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^6.19.0",
+    "bcryptjs": "^2.4.3",
     "next": "16.0.1",
     "next-auth": "^5.0.0-beta.15",
     "prisma": "^6.19.0",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

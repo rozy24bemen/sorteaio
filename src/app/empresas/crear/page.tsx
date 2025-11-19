@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -39,6 +39,10 @@ export default function CrearSorteoPage() {
     e.preventDefault();
     if (!session?.user) {
       setError("Debes estar autenticado");
+      return;
+    }
+    if (!session.user.isCompany) {
+      setError("Debes ser una marca para crear sorteos");
       return;
     }
 
