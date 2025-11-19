@@ -5,6 +5,7 @@ if (!process.env.DATABASE_URL) {
   const dbPath = path.resolve(process.cwd(), "prisma", "test.db").replace(/\\/g, "/");
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
+const isSqlite = (process.env.DATABASE_URL || "").startsWith("file:");
 
 let prisma: typeof import("@/lib/prisma")["prisma"];
 let instagramCallbackCore: typeof import("@/lib/oauth/instagramCallback").instagramCallbackCore;
@@ -15,7 +16,9 @@ describe("Instagram OAuth callback core (participants)", () => {
     const coreMod = await import("@/lib/oauth/instagramCallback");
     instagramCallbackCore = coreMod.instagramCallbackCore;
     await prisma.$connect();
-    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    if (isSqlite) {
+      await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    }
     process.env.INSTAGRAM_APP_ID = "ig-app";
     process.env.INSTAGRAM_APP_SECRET = "ig-secret";
   });

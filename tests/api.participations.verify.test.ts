@@ -7,6 +7,7 @@ if (!process.env.DATABASE_URL) {
   const dbPath = path.resolve(process.cwd(), "prisma", "test-verify.db").replace(/\\/g, "/");
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
+const isSqlite = (process.env.DATABASE_URL || "").startsWith("file:");
 process.env.MOCK_VERIFICATION = "pass"; // Ensure mock passes
 
 vi.mock("@/lib/auth-helpers", () => ({
@@ -21,18 +22,22 @@ const asCtx = (id: string) => ({ params: Promise.resolve({ id }) });
 describe("/api/participations/[id]/verify POST", () => {
   beforeAll(async () => {
     // Ensure per-file DB has schema by copying from base test.db
-    const baseDb = path.resolve(process.cwd(), "prisma", "test.db");
-    const targetDb = process.env.DATABASE_URL!.replace(/^file:/, "");
-    try {
-      if (fs.existsSync(baseDb)) {
-        fs.copyFileSync(baseDb, targetDb);
-      }
-    } catch {}
+    if (isSqlite) {
+      const baseDb = path.resolve(process.cwd(), "prisma", "test.db");
+      const targetDb = process.env.DATABASE_URL!.replace(/^file:/, "");
+      try {
+        if (fs.existsSync(baseDb)) {
+          fs.copyFileSync(baseDb, targetDb);
+        }
+      } catch {}
+    }
     prisma = (await import("@/lib/prisma")).prisma;
     const mod = await import("@/app/api/participations/[id]/verify/route");
     VerifyPOST = mod.POST as any;
     await prisma.$connect();
-    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    if (isSqlite) {
+      await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    }
   });
   afterAll(async () => { await prisma.$disconnect(); });
 

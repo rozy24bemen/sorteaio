@@ -21,8 +21,12 @@ describe("/api/companies POST", () => {
     prisma = (await import("@/lib/prisma")).prisma;
     CompaniesPOST = (await import("@/app/api/companies/route")).POST as any;
     await prisma.$connect();
-    // Disable FK checks for test isolation (SQLite)
-    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    // Disable FK checks only for SQLite; Postgres doesn't support PRAGMA
+    if ((process.env.DATABASE_URL || "").startsWith("file:")) {
+      await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    }
+    // Ensure the auth-mocked user exists when FK is enforced (Postgres)
+    await prisma.user.upsert({ where: { id: "test-user" }, update: {}, create: { id: "test-user" } as any });
   });
 
   afterAll(async () => {
@@ -30,7 +34,13 @@ describe("/api/companies POST", () => {
   });
 
   beforeEach(async () => {
-    // Clean tables that we touch
+    // Clean tables in FK-safe order
+    try { await prisma.winnerBackup.deleteMany({}); } catch {}
+    try { await prisma.winnerSelection.deleteMany({}); } catch {}
+    await prisma.participation.deleteMany({});
+    await prisma.requirement.deleteMany({});
+    await prisma.giveaway.deleteMany({});
+    await prisma.socialAccount?.deleteMany?.({} as any).catch(() => {});
     await prisma.companyAccount.deleteMany({});
   });
 

@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:pg": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea\" next dev",
     "build": "prisma db push --skip-generate && prisma generate && next build",
     "start": "next start",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx prisma/seed.ts",
-    "pretest": "cross-env DATABASE_URL=\"file:./prisma/test.db\" prisma db push --skip-generate --force-reset",
-    "test": "vitest run",
+    "pretest": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea_test\" prisma db push --skip-generate --force-reset",
+    "test": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea_test\" vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {

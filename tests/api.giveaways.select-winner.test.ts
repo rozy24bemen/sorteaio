@@ -8,6 +8,7 @@ if (!process.env.DATABASE_URL) {
   const dbPath = path.resolve(process.cwd(), "prisma", "test.db").replace(/\\/g, "/");
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
+const isSqlite = (process.env.DATABASE_URL || "").startsWith("file:");
 
 let __currentUserId = "owner-1";
 vi.mock("@/lib/auth-helpers", () => ({
@@ -25,7 +26,9 @@ describe("/api/giveaways/[id]/select-winner POST", () => {
     const mod = await import("@/app/api/giveaways/[id]/select-winner/route");
     SelectWinnerPOST = mod.POST as any;
     await prisma.$connect();
-    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    if (isSqlite) {
+      await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    }
   });
 
   afterAll(async () => {
@@ -33,13 +36,14 @@ describe("/api/giveaways/[id]/select-winner POST", () => {
   });
 
   beforeEach(async () => {
-  // Order: backups -> selection -> participation -> giveaway -> company
+  // Order: backups -> selection -> participation -> requirement -> giveaway -> social -> company -> users
   // Use try/catch to ignore missing table errors if schema evolves.
   try { await prisma.winnerBackup.deleteMany({}); } catch {}
   try { await prisma.winnerSelection.deleteMany({}); } catch {}
     await prisma.participation.deleteMany({});
     await prisma.requirement.deleteMany({});
     await prisma.giveaway.deleteMany({});
+    await prisma.socialAccount?.deleteMany?.({} as any).catch(() => {});
     await prisma.companyAccount.deleteMany({});
     // Ensure user seeds are clean between tests to avoid unique constraint conflicts
     try { await prisma.user.deleteMany({}); } catch {}

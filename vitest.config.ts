@@ -10,7 +10,9 @@ export default defineConfig({
     exclude: ["node_modules", ".next", "dist"],
     // Ensure test isolation by running files sequentially
     // Run tests in a single worker to avoid DB concurrency issues
-  pool: "threads",
+    pool: "forks",
+    maxWorkers: 1,
+    minWorkers: 1,
     isolate: true,
     sequence: { concurrent: false },
   // threads option not available in this version; rely on sequence + pool settings

@@ -8,6 +8,7 @@ if (!process.env.DATABASE_URL) {
   const dbPath = path.resolve(process.cwd(), "prisma", "test-main.db").replace(/\\/g, "/");
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
+const isSqlite = (process.env.DATABASE_URL || "").startsWith("file:");
 
 // Mocks
 let __currentUserId = "u1";
@@ -21,17 +22,21 @@ let GiveawaysPOST: (req: NextRequest) => Promise<Response>;
 describe("/api/giveaways POST", () => {
   beforeAll(async () => {
     // Ensure our per-file DB has schema by copying from base test.db
-    const baseDb = path.resolve(process.cwd(), "prisma", "test.db");
-    const targetDb = process.env.DATABASE_URL!.replace(/^file:/, "");
-    try {
-      if (fs.existsSync(baseDb)) {
-        fs.copyFileSync(baseDb, targetDb);
-      }
-    } catch {}
+    if (isSqlite) {
+      const baseDb = path.resolve(process.cwd(), "prisma", "test.db");
+      const targetDb = process.env.DATABASE_URL!.replace(/^file:/, "");
+      try {
+        if (fs.existsSync(baseDb)) {
+          fs.copyFileSync(baseDb, targetDb);
+        }
+      } catch {}
+    }
     prisma = (await import("@/lib/prisma")).prisma;
     GiveawaysPOST = (await import("@/app/api/giveaways/route")).POST as any;
     await prisma.$connect();
-    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    if (isSqlite) {
+      await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    }
   });
 
   afterAll(async () => {
@@ -39,16 +44,23 @@ describe("/api/giveaways POST", () => {
   });
 
   beforeEach(async () => {
-    // Cleanup limited to models currently created in these tests
+    // Cleanup in FK-safe order
+    try { await prisma.winnerBackup.deleteMany({}); } catch {}
+    try { await prisma.winnerSelection.deleteMany({}); } catch {}
+    await prisma.participation.deleteMany({});
     await prisma.requirement.deleteMany({});
     await prisma.giveaway.deleteMany({});
+    await prisma.socialAccount?.deleteMany?.({} as any).catch(() => {});
     await prisma.companyAccount.deleteMany({});
     // Also clear any leftover companies/giveaways explicitly, just in case
-    const extraG = await prisma.giveaway.count({});
-    if (extraG > 0) {
-      await prisma.$executeRawUnsafe("DELETE FROM Giveaway;");
+    if (isSqlite) {
+      const extraG = await prisma.giveaway.count({});
+      if (extraG > 0) {
+        await prisma.$executeRawUnsafe("DELETE FROM Giveaway;");
+      }
     }
-    // Seed company directly (ignore user FK for test simplification)
+    // Seed prerequisite user and company
+    await prisma.user.upsert({ where: { id: "u1" }, update: {}, create: { id: "u1" } as any });
     await prisma.companyAccount.create({
       data: { id: "c1", legalName: "Empresa Uno", taxId: "B111", contactEmail: "c1@test.com", ownerUserId: "u1" },
     });

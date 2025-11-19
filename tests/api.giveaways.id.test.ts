@@ -9,6 +9,7 @@ if (!process.env.DATABASE_URL) {
   const dbPath = path.resolve(process.cwd(), "prisma", "test-id.db").replace(/\\/g, "/");
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
+const isSqlite = (process.env.DATABASE_URL || "").startsWith("file:");
 
 let __currentUserId = "u1";
 vi.mock("@/lib/auth-helpers", () => ({
@@ -24,19 +25,23 @@ const asCtx = (id: string) => ({ params: Promise.resolve({ id }) });
 describe("/api/giveaways/[id] PATCH/DELETE", () => {
   beforeAll(async () => {
     // Ensure our per-file DB has schema by copying from base test.db
-    const baseDb = path.resolve(process.cwd(), "prisma", "test.db");
-    const targetDb = process.env.DATABASE_URL!.replace(/^file:/, "");
-    try {
-      if (fs.existsSync(baseDb)) {
-        fs.copyFileSync(baseDb, targetDb);
-      }
-    } catch {}
+    if (isSqlite) {
+      const baseDb = path.resolve(process.cwd(), "prisma", "test.db");
+      const targetDb = process.env.DATABASE_URL!.replace(/^file:/, "");
+      try {
+        if (fs.existsSync(baseDb)) {
+          fs.copyFileSync(baseDb, targetDb);
+        }
+      } catch {}
+    }
     prisma = (await import("@/lib/prisma")).prisma;
     const mod = await import("@/app/api/giveaways/[id]/route");
     GiveawaysPATCH = mod.PATCH as any;
     GiveawaysDELETE = mod.DELETE as any;
     await prisma.$connect();
-    await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    if (isSqlite) {
+      await prisma.$executeRawUnsafe("PRAGMA foreign_keys=OFF;");
+    }
   });
 
   afterAll(async () => {
@@ -44,9 +49,18 @@ describe("/api/giveaways/[id] PATCH/DELETE", () => {
   });
 
   beforeEach(async () => {
+    // Cleanup in FK-safe order
+    try { await prisma.winnerBackup.deleteMany({}); } catch {}
+    try { await prisma.winnerSelection.deleteMany({}); } catch {}
+    await prisma.participation.deleteMany({});
     await prisma.requirement.deleteMany({});
     await prisma.giveaway.deleteMany({});
+    await prisma.socialAccount?.deleteMany?.({} as any).catch(() => {});
     await prisma.companyAccount.deleteMany({});
+    await prisma.user.deleteMany({});
+    // Seed users required by FK
+    await prisma.user.create({ data: { id: "u1" } as any });
+    await prisma.user.create({ data: { id: "u2" } as any });
     await prisma.companyAccount.create({
       data: { id: "c1-id", legalName: "Empresa Uno", taxId: "B111", contactEmail: "c1@test.com", ownerUserId: "u1" },
     });
