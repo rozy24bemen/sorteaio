@@ -3,13 +3,27 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+interface RegisterCompanyInput {
+  legalName?: string;
+  taxId?: string;
+  contactEmail?: string;
+}
+
+interface RegisterBody {
+  email: string;
+  password: string;
+  name?: string;
+  accountType: "PARTICIPANT" | "BRAND";
+  company?: RegisterCompanyInput;
+}
+
 // Strict mode: an email cannot register as a different accountType if already present.
 // Body: { email, password, name?, accountType: 'PARTICIPANT' | 'BRAND', company?: { legalName, taxId?, contactEmail? } }
 export async function POST(req: Request) {
   try {
-    const json = await req.json().catch(() => null);
+    const json: unknown = await req.json().catch(() => null);
     if (!json || typeof json !== "object") return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-    const { email, password, name, accountType, company } = json as Record<string, any>;
+    const { email, password, name, accountType, company } = json as RegisterBody;
     if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
       return NextResponse.json({ error: "Email y password requeridos" }, { status: 400 });
     }

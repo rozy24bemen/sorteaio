@@ -6,12 +6,23 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import type { Adapter } from "next-auth/adapters";
 
+// Local interface to access extended user fields that Prisma schema defines but
+// adapter type narrowing may omit in generated TypeScript types.
+interface ExtendedUser {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  passwordHash?: string | null;
+  accountType?: string | null;
+}
+
 // Extend session type
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       isCompany?: boolean;
+      role?: string;
     } & DefaultSession["user"];
   }
 }
@@ -38,10 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = typeof creds?.email === "string" ? creds.email.trim().toLowerCase() : null;
         const password = typeof creds?.password === "string" ? creds.password : null;
         if (!email || !password) return null;
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: { id: true, email: true, name: true, passwordHash: true, accountType: true }
-        });
+        const user = await prisma.user.findUnique({ where: { email } }) as unknown as ExtendedUser | null;
         if (!user || !user.passwordHash) return null;
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
@@ -59,13 +67,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = user.id;
         // Direct role mapping via accountType
         try {
-          const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { accountType: true } });
-          // accountType is an enum string on Prisma client now
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id } }) as unknown as ExtendedUser | null;
           session.user.isCompany = dbUser?.accountType === "BRAND";
-          (session.user as any).role = dbUser?.accountType || "PARTICIPANT";
+          session.user.role = (dbUser?.accountType as string) || "PARTICIPANT";
         } catch {
           session.user.isCompany = false;
-          (session.user as any).role = "PARTICIPANT";
+          session.user.role = "PARTICIPANT";
         }
       }
       return session;

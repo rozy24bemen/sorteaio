@@ -46,8 +46,9 @@ function AuthInner() {
       } else {
         router.push(next);
       }
-    } catch (e: any) {
-      setError(e.message || "Error interno");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Error interno";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -62,8 +63,9 @@ function AuthInner() {
       } else {
         router.push(next);
       }
-    } catch (e: any) {
-      setError(e.message || "Error interno");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Error interno";
+      setError(message);
     } finally { setLoading(false); }
   }
 
