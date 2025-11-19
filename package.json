@@ -10,9 +10,10 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx prisma/seed.ts",
-    "pretest": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea_test\" prisma db push --skip-generate --force-reset",
+    "pretest": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea_test\" node scripts/pretest.js",
     "test": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea_test\" vitest run",
     "test:watch": "vitest"
+    ,"db:health": "node scripts/db-health.js"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

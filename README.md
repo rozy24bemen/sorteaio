@@ -74,7 +74,7 @@ INSTAGRAM_APP_SECRET="..."
 # Opcional
 INSTAGRAM_REDIRECT_URI="https://tu-dominio.com/api/oauth/instagram/callback"
 ```
-Para producción usar un proveedor (Postgres) y regenerar migraciones.
+Para producción usar Postgres. Ver sección 17 para despliegue y variables.
 
 ## 6. Base de Datos y Prisma
 - Ejecutar `npx prisma migrate dev` para crear migraciones formales.
@@ -147,6 +147,80 @@ Dev CSP: handler auth añade `'unsafe-eval'` sólo en desarrollo para evitar blo
 GitHub Actions (`.github/workflows/ci.yml`):
 - Trigger en push/PR a `main`.
 - Jobs: lint (`next lint` sin warnings), typecheck (TS), prisma generate.
+
+### 12.1 Estrategia de Base de Datos en CI
+
+Objetivo: ejecutar tests sin destruir datos de entornos remotos ni provocar errores de conexión.
+
+Opciones:
+1. DB dedicada de testing (recomendado): `DATABASE_URL` apunta a `postgresql://user:pass@host:5432/app_test`. El script `scripts/pretest.js` detecta que NO es localhost y evita `--force-reset` (salvo `FORCE_DB_RESET=1`). Limpieza manual puede hacerse con migraciones + truncados específicos si se requiere.
+2. DB local (self-hosted) en runner: levantar servicio Postgres (service container) y apuntar a `localhost`. En este caso `scripts/pretest.js` hará reset completo antes de los tests.
+3. Data Proxy / Accelerate: usar `POSTGRES_PRISMA_URL` y marcar `SKIP_DB_RESET=1` para evitar push/reset.
+
+Flags soportadas:
+- `SKIP_DB_RESET=1`: Omite cualquier intento de reset aunque el host sea local.
+- `FORCE_DB_RESET=1`: Fuerza reset incluso si el host no es local (usar sólo en DB efímera de CI).
+
+Prioridad de variables (ver sección 17.2.1): `POSTGRES_URL_NON_POOLING` > `POSTGRES_URL` > `DATABASE_URL` > `POSTGRES_PRISMA_URL`. Asegura que en el workflow sólo defines una de forma consistente.
+
+Ejemplo de job (Postgres con service container):
+```yaml
+jobs:
+	test:
+		runs-on: ubuntu-latest
+		services:
+			postgres:
+				image: postgres:16-alpine
+				env:
+					POSTGRES_USER: sortea
+					POSTGRES_PASSWORD: devpass
+					POSTGRES_DB: sortea_test
+				ports:
+					- 5432:5432
+				options: >-
+					--health-cmd "pg_isready -U sortea" --health-interval 5s --health-timeout 5s --health-retries 5
+		steps:
+			- uses: actions/checkout@v4
+			- uses: actions/setup-node@v4
+				with:
+					node-version: 20
+					cache: 'npm'
+			- name: Install deps
+				run: npm ci
+			- name: Generate Prisma Client
+				env:
+					DATABASE_URL: postgresql://sortea:devpass@localhost:5432/sortea_test
+				run: npx prisma generate
+			- name: Run tests (reset auto)
+				env:
+					DATABASE_URL: postgresql://sortea:devpass@localhost:5432/sortea_test
+				run: npm test
+```
+
+Ejemplo usando DB remota (sin reset destructivo):
+```yaml
+	test-remote:
+		runs-on: ubuntu-latest
+		steps:
+			- uses: actions/checkout@v4
+			- uses: actions/setup-node@v4
+				with:
+					node-version: 20
+					cache: 'npm'
+			- run: npm ci
+			- name: Tests (skip reset)
+				env:
+					DATABASE_URL: ${{ secrets.REMOTE_TEST_DATABASE_URL }}
+					SKIP_DB_RESET: '1'
+				run: npm test
+```
+
+Checklist CI DB:
+- Evitar usar producción en tests.
+- Añadir `SKIP_DB_RESET=1` si la DB no debe ser destruida.
+- Revisar logs por mensajes de `[pretest]` para confirmar comportamiento.
+- No ejecutar `prisma migrate dev` en CI; usar `migrate deploy` si necesitas aplicar migraciones en DB remota controlada.
+
 
 ## 13. Roadmap (Prioridades Próximas)
 1. Ganador + backup + lógica aleatoria justa
@@ -296,7 +370,11 @@ Esta sección describe cómo llevar el proyecto a producción usando Vercel (pla
 En Vercel → Project Settings → Environment Variables (añadir en Production y Preview):
 
 ```
-DATABASE_URL="postgresql://user:password@host:5432/db?sslmode=prefer"
+# Siempre evita apuntar a localhost en producción.
+# Recomendado: que DATABASE_URL coincida con POSTGRES_URL_NON_POOLING para unificar.
+POSTGRES_URL_NON_POOLING="postgresql://user:password@host:5432/db?sslmode=prefer"
+POSTGRES_URL="postgresql://user:password@host:5432/db?sslmode=prefer"
+DATABASE_URL="postgresql://user:password@host:5432/db?sslmode=prefer"  # copia del NON_POOLING
 AUTH_SECRET="<cadena segura de 32+ bytes>"        # openssl rand -base64 32
 NEXTAUTH_URL="https://tu-dominio.vercel.app"      # URL pública final
 
@@ -317,6 +395,57 @@ INSTAGRAM_REDIRECT_URI="https://tu-dominio.vercel.app/api/oauth/instagram/callba
 # Verificación (opcional para forzar mock en staging)
 MOCK_VERIFICATION="pass"  # quitar en producción para usar MetaAdapter real
 ```
+
+#### 17.2.1 Buenas prácticas con DATABASE_URL
+
+- No definas ENV con nombre `DATABASE_URL` apuntando a `localhost` en Vercel.
+- Si necesitas distinguir entornos: usa `DATABASE_URL_LOCAL` sólo en `.env` local (no subir a producción).
+- Prisma (via `prisma.config.ts`) prioriza: `POSTGRES_URL_NON_POOLING` > `POSTGRES_URL` > `DATABASE_URL` > `POSTGRES_PRISMA_URL`.
+- Mantener `DATABASE_URL` igual al valor directo (no pooling) simplifica librerías que esperan esa variable.
+- Para Data Proxy: añade también `POSTGRES_PRISMA_URL`; el cliente se conectará según configuración de Runtime si se usa.
+- Evita sobrescribir `DATABASE_URL` accidentalmente en build scripts de CI.
+
+#### 17.2.2 Prevención de errores P1001/P1000 en producción
+
+Los errores `P1001` (no se puede alcanzar el servidor) y `P1000` (credenciales inválidas) suelen deberse a:
+1. `DATABASE_URL` apuntando a `localhost` en producción.
+2. Uso de `prisma db push` durante el build (no recomendado en producción).
+3. Cadena de conexión sin parámetros SSL cuando el proveedor obliga TLS.
+
+Mitigación:
+- El script de build ya no ejecuta `db push`; sólo `prisma generate`.
+- Verifica que la cadena incluye `?sslmode=prefer` o `?sslmode=require` según proveedor.
+- Usa un job/migración explícito (`npx prisma migrate deploy`) fuera del build para cambios de esquema.
+
+#### 17.2.3 Tests y reset condicional
+
+- El script `scripts/pretest.js` sólo hace reset (`db push --force-reset`) si el host es `localhost`/`127.0.0.1`.
+- En CI remota o producción, establece `SKIP_DB_RESET=1` si ejecutas tests contra un entorno compartido.
+- Para forzar un reset remoto (no recomendado): `FORCE_DB_RESET=1`.
+
+#### 17.2.4 Verificación rápida de la variable
+
+Puedes añadir un script de salud (ejemplo) para validar que en producción no apuntas a `localhost`:
+```bash
+node scripts/db-health.js
+```
+Implementación sugerida:
+```js
+// scripts/db-health.js
+const url = process.env.DATABASE_URL || process.env.POSTGRES_URL_NON_POOLING || '';
+if (!url) { console.error('[db-health] No DATABASE_URL found'); process.exit(1); }
+try {
+	const u = new URL(url.replace(/^postgres:/,'postgresql:'));
+	if (/^(localhost|127\.0\.0\.1)$/i.test(u.hostname)) {
+		console.error('[db-health] ERROR: DATABASE_URL apunta a host local en entorno no local');
+		process.exit(2);
+	}
+	console.log('[db-health] OK host=', u.hostname);
+} catch (e) {
+	console.error('[db-health] Parse error', e.message); process.exit(3);
+}
+```
+
 
 Notas:
 - Genera un nuevo `AUTH_SECRET` para producción (no reutilizar el de dev).
