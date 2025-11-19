@@ -1,26 +1,24 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
-// Normalize DATABASE_URL for Prisma:
-// - Prefer DATABASE_URL
-// - Fallback to common Vercel Postgres envs (POSTGRES_PRISMA_URL, POSTGRES_URL)
-// - As a last resort (e.g., CI), fall back to a local SQLite URL so `prisma generate`
-//   and type-checking can run without secrets.
-// Prefer direct Postgres URLs for CLI (POSTGRES_URL[_NON_POOLING]) over prisma://
+// Normalize DATABASE_URL for Prisma CLI:
+// - Prefer direct Postgres URLs (POSTGRES_URL_NON_POOLING, POSTGRES_URL)
+// - Then fallback to DATABASE_URL if set
+// - Then allow Data Proxy (POSTGRES_PRISMA_URL)
+// - Finally, fall back to local SQLite only when nothing else is available
 const candidates = [
-  process.env.DATABASE_URL,
-  process.env.POSTGRES_URL,
   process.env.POSTGRES_URL_NON_POOLING,
+  process.env.POSTGRES_URL,
+  process.env.DATABASE_URL,
   process.env.POSTGRES_PRISMA_URL,
 ];
-let effectiveDbUrl = candidates.find((u) => !!u && !u.startsWith("prisma:"));
+let effectiveDbUrl = candidates.find((u) => !!u);
 if (!effectiveDbUrl) {
-  // As a last resort (e.g., CI without secrets), fall back to SQLite
   effectiveDbUrl = "file:./prisma/dev.db";
 }
 
-// Ensure Prisma sees DATABASE_URL even if only POSTGRES_* is set (e.g., Vercel Postgres)
-if (!process.env.DATABASE_URL) {
+// Ensure Prisma uses the chosen effective URL, overriding a mismatched DATABASE_URL
+if (process.env.DATABASE_URL !== effectiveDbUrl) {
   process.env.DATABASE_URL = effectiveDbUrl;
 }
 

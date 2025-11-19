@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:pg": "cross-env DATABASE_URL=\"postgresql://sortea:devpass@localhost:5433/sortea\" next dev",
-    "build": "prisma db push --skip-generate && prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
