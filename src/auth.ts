@@ -26,9 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // Mitigate PKCE cookie issues in certain proxy/preview setups
-      // We'll rely on `state` which remains a recommended CSRF check for server-side apps
-      checks: ["state"],
+      // Using default checks (state + pkce when applicable) to diagnose cookie issues
     }),
     Credentials({
       name: "Email",
