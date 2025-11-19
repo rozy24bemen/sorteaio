@@ -27,6 +27,12 @@ declare module "next-auth" {
   }
 }
 
+const isProd = process.env.NODE_ENV === "production";
+const cookieSuffix = (process.env.AUTH_SECRET || "").slice(0, 8) || "dev";
+const sessionCookieName = isProd
+  ? `__Secure-next-auth.session-token.${cookieSuffix}`
+  : "next-auth.session-token";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Allow dynamic host detection behind Vercel proxy and on preview URLs
   trustHost: true,
@@ -57,7 +63,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
     }),
   ],
-  session: { strategy: "database" },
+  session: {
+    strategy: "database",
+    maxAge: 30 * 24 * 60 * 60,
+  },
+  cookies: {
+    sessionToken: {
+      name: sessionCookieName,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProd,
+      },
+    },
+  },
   pages: {
     signIn: "/login",
   },
