@@ -11,7 +11,8 @@ export function middleware(req: Request) {
   if (!isEnterpriseProtected) return NextResponse.next();
 
   const cookieHeader = (req as unknown as { headers?: Headers }).headers?.get("cookie") || "";
-  const hasSession = /(?:^|;\s*)(?:authjs\.session-token|__Secure-authjs\.session-token|next-auth\.session-token)=/.test(cookieHeader);
+  const sessionPattern = /(?:^|;\s*)(?:authjs\.session-token|__Secure-authjs\.session-token|next-auth\.session-token(?:\.[^=;]+)?|__Secure-next-auth\.session-token(?:\.[^=;]+)?)/;
+  const hasSession = sessionPattern.test(cookieHeader);
   if (!hasSession) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("next", pathname);
