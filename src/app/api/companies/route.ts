@@ -16,7 +16,10 @@ interface CompanyCreatePayload {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const authResult = await requireAuth();
-  if (authResult.error) return authResult.error;
+  if (authResult.error) {
+    console.warn("[api/companies] unauthorized POST");
+    return authResult.error;
+  }
   const userId = authResult.user!.id;
 
   try {
@@ -64,7 +67,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
  */
 export async function GET(): Promise<NextResponse> {
   const authResult = await requireAuth();
-  if (authResult.error) return authResult.error;
+  if (authResult.error) {
+    console.warn("[api/companies] unauthorized GET");
+    return authResult.error;
+  }
   const userId = authResult.user!.id;
 
   try {
