@@ -54,11 +54,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(creds) {
         const email = typeof creds?.email === "string" ? creds.email.trim().toLowerCase() : null;
         const password = typeof creds?.password === "string" ? creds.password : null;
-        if (!email || !password) return null;
+        if (!email || !password) {
+          console.warn("[auth][credentials] Missing email or password input");
+          return null;
+        }
         const user = await prisma.user.findUnique({ where: { email } }) as unknown as ExtendedUser | null;
-        if (!user || !user.passwordHash) return null;
+        if (!user) {
+          console.warn("[auth][credentials] User not found", email);
+          return null;
+        }
+        if (!user.passwordHash) {
+          console.warn("[auth][credentials] User has no password hash (likely OAuth-only)", user.id);
+          return null;
+        }
         const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        if (!ok) {
+          console.warn("[auth][credentials] Invalid password", user.id);
+          return null;
+        }
         return { id: user.id, email: user.email ?? undefined, name: user.name ?? undefined };
       }
     }),
