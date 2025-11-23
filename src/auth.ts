@@ -79,6 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "database",
     maxAge: 30 * 24 * 60 * 60,
+    updateAge: 5 * 60,
   },
   cookies: {
     sessionToken: {

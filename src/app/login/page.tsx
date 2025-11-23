@@ -44,7 +44,8 @@ function AuthInner() {
       if (loginRes?.error) {
         setError(loginRes.error);
       } else {
-        router.push(next);
+        router.replace(loginRes?.url || next);
+        router.refresh();
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Error interno";
@@ -61,7 +62,8 @@ function AuthInner() {
       if (loginRes?.error) {
         setError(loginRes.error);
       } else {
-        router.push(next);
+        router.replace(loginRes?.url || next);
+        router.refresh();
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Error interno";
