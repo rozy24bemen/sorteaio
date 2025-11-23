@@ -52,8 +52,13 @@ export default function OnboardingClient() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || `Error ${res.status}`);
       }
-      try { await update(); } catch {}
+      try {
+        await update();
+      } catch (updateErr) {
+        console.warn("[onboarding] session update failed", updateErr);
+      }
       router.replace("/empresas/dashboard");
+      router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : "No se pudo crear la empresa";
       setError(message);
