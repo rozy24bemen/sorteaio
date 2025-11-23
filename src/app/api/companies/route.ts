@@ -20,6 +20,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const userId = authResult.user!.id;
 
   try {
+    const existing = await prisma.companyAccount.findFirst({ where: { ownerUserId: userId } });
+    if (existing) {
+      return NextResponse.json({ company: existing, reused: true }, { status: 200 });
+    }
+
     const body: CompanyCreatePayload = await req.json();
     const { legalName, taxId, fiscalAddress, contactEmail } = body;
 
@@ -30,15 +35,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const company = await prisma.companyAccount.create({
-      data: {
-        legalName,
-        taxId,
-        fiscalAddress,
-        contactEmail,
-        ownerUserId: userId,
-      },
-    });
+    const [company] = await prisma.$transaction([
+      prisma.companyAccount.create({
+        data: {
+          legalName,
+          taxId,
+          fiscalAddress,
+          contactEmail,
+          ownerUserId: userId,
+        },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { accountType: "BRAND" },
+      }),
+    ]);
 
     return NextResponse.json({ company }, { status: 201 });
   } catch (error) {
